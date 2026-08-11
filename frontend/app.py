@@ -12,7 +12,6 @@ from datetime import datetime
 
 BACKEND_URL = "https://weather-dashboard-api-w889.onrender.com"
 
-
 # =====================================
 # WEATHER ICONS
 # =====================================
@@ -38,7 +37,7 @@ weather_icons = {
     82: ("🌧️", "Heavy Rain Showers"),
     95: ("⛈️", "Thunderstorm"),
     96: ("⛈️", "Thunderstorm with Hail"),
-    99: ("⛈️", "Heavy Thunderstorm with Hail")
+    99: ("⛈️", "Heavy Thunderstorm with Hail"),
 }
 
 
@@ -49,7 +48,7 @@ weather_icons = {
 st.set_page_config(
     page_title="Weather Dashboard",
     page_icon="🌤️",
-    layout="wide"
+    layout="wide",
 )
 
 
@@ -57,85 +56,87 @@ st.set_page_config(
 # LOAD BACKGROUND IMAGE
 # =====================================
 
-with open("assets/weather_bg.jpg", "rb") as image_file:
-
-    encoded_image = base64.b64encode(
-        image_file.read()
-    ).decode()
+try:
+    with open("assets/weather_bg.jpg", "rb") as image_file:
+        encoded_image = base64.b64encode(
+            image_file.read()
+        ).decode()
+except FileNotFoundError:
+    encoded_image = ""
 
 
 # =====================================
 # CUSTOM CSS
 # =====================================
 
-st.markdown(
-    f"""
-    <style>
+if encoded_image:
+    st.markdown(
+        f"""
+        <style>
 
-    .stApp {{
-        background-image:
-            linear-gradient(
-                rgba(0, 0, 0, 0.55),
-                rgba(0, 0, 0, 0.55)
-            ),
-            url("data:image/jpeg;base64,{encoded_image}");
+        .stApp {{
+            background-image:
+                linear-gradient(
+                    rgba(0, 0, 0, 0.55),
+                    rgba(0, 0, 0, 0.55)
+                ),
+                url("data:image/jpeg;base64,{encoded_image}");
 
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }}
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
 
+        .forecast-card {{
+            padding: 16px 6px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.12);
+            min-height: 190px;
+            background: rgba(255,255,255,0.03);
+            box-sizing: border-box;
+        }}
 
-    .forecast-card {{
-        padding: 16px 6px;
-        border-radius: 16px;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.12);
-        min-height: 190px;
-        background: rgba(255,255,255,0.03);
-        box-sizing: border-box;
-    }}
+        .forecast-day {{
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }}
 
-    .forecast-day {{
-        font-size: 13px;
-        font-weight: 700;
-        margin-bottom: 10px;
-    }}
+        .forecast-icon {{
+            font-size: 36px;
+            margin: 8px 0;
+        }}
 
-    .forecast-icon {{
-        font-size: 36px;
-        margin: 8px 0;
-    }}
+        .forecast-temp {{
+            font-size: 19px;
+            font-weight: 700;
+            margin-top: 8px;
+        }}
 
-    .forecast-temp {{
-        font-size: 19px;
-        font-weight: 700;
-        margin-top: 8px;
-    }}
+        .forecast-min {{
+            font-size: 13px;
+            opacity: 0.6;
+            margin-top: 3px;
+        }}
 
-    .forecast-min {{
-        font-size: 13px;
-        opacity: 0.6;
-        margin-top: 3px;
-    }}
+        .forecast-condition {{
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 10px;
+            line-height: 1.3;
+        }}
 
-    .forecast-condition {{
-        font-size: 11px;
-        opacity: 0.7;
-        margin-top: 10px;
-        line-height: 1.3;
-    }}
+        .forecast-rain {{
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }}
 
-    .forecast-rain {{
-        font-size: 11px;
-        opacity: 0.7;
-        margin-top: 8px;
-    }}
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # =====================================
@@ -167,7 +168,7 @@ st.sidebar.write(
 
 city = st.text_input(
     "🏙️ Enter City",
-    placeholder="Example: Pune"
+    placeholder="Example: Pune",
 )
 
 
@@ -178,10 +179,9 @@ city = st.text_input(
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-
     search = st.button(
         "🔍 Get Weather",
-        use_container_width=True
+        use_container_width=True,
     )
 
 
@@ -193,19 +193,14 @@ if search:
 
     if not city.strip():
 
-        st.warning(
-            "⚠️ Please enter a city name."
-        )
+        st.warning("⚠️ Please enter a city name.")
 
     else:
 
-        with st.spinner(
-            "Fetching weather..."
-        ):
+        with st.spinner("Fetching weather..."):
 
             try:
 
-                # Connect to deployed FastAPI backend
                 url = (
                     f"{BACKEND_URL}/weather/"
                     f"{city.strip()}"
@@ -213,7 +208,7 @@ if search:
 
                 response = httpx.get(
                     url,
-                    timeout=60
+                    timeout=60,
                 )
 
             except httpx.RequestError:
@@ -225,7 +220,6 @@ if search:
 
                 st.stop()
 
-
         # =================================
         # API RESPONSE
         # =================================
@@ -234,14 +228,13 @@ if search:
 
             data = response.json()
 
-
             # =================================
             # CURRENT WEATHER
             # =================================
 
             icon, condition = weather_icons.get(
-                data["weather_code"],
-                ("❓", "Unknown")
+                data.get("weather_code"),
+                ("❓", "Unknown"),
             )
 
             st.subheader(
@@ -254,7 +247,7 @@ if search:
 
             st.metric(
                 "🌡 Temperature",
-                f"{data['temperature']}°C"
+                f"{data['temperature']}°C",
             )
 
 
@@ -268,21 +261,21 @@ if search:
 
                 st.metric(
                     "💧 Humidity",
-                    f"{data['humidity']}%"
+                    f"{data['humidity']}%",
                 )
 
             with col2:
 
                 st.metric(
                     "💨 Wind Speed",
-                    f"{data['wind_speed']} km/h"
+                    f"{data['wind_speed']} km/h",
                 )
 
             with col3:
 
                 st.metric(
                     "🥵 Feels Like",
-                    f"{data['feels_like']}°C"
+                    f"{data['feels_like']}°C",
                 )
 
 
@@ -292,12 +285,9 @@ if search:
 
             st.divider()
 
-            st.subheader(
-                "🌅 Sun Information"
-            )
+            st.subheader("🌅 Sun Information")
 
             sunrise = data["sunrise"][0]
-
             sunset = data["sunset"][0]
 
             sunrise_time = datetime.fromisoformat(
@@ -308,21 +298,20 @@ if search:
                 sunset
             ).strftime("%I:%M %p")
 
-
             col1, col2 = st.columns(2)
 
             with col1:
 
                 st.metric(
                     "🌅 Sunrise",
-                    sunrise_time
+                    sunrise_time,
                 )
 
             with col2:
 
                 st.metric(
                     "🌇 Sunset",
-                    sunset_time
+                    sunset_time,
                 )
 
 
@@ -332,9 +321,7 @@ if search:
 
             st.divider()
 
-            st.subheader(
-                "📅 7-Day Forecast"
-            )
+            st.subheader("📅 7-Day Forecast")
 
             forecast = data["forecast"]
 
@@ -347,21 +334,17 @@ if search:
             # FORECAST CARDS
             # =================================
 
-            forecast_columns = st.columns(7)
+            forecast_columns = st.columns(
+                len(forecast)
+            )
 
-
-            for i in range(len(forecast)):
+            for i, day in enumerate(forecast):
 
                 with forecast_columns[i]:
 
-                    day = forecast[i]
-
                     date_string = day["date"]
-
                     weather_code = day["weather_code"]
-
                     max_temp = day["max_temp"]
-
                     min_temp = day["min_temp"]
 
                     rain = rain_probability[i]
@@ -373,7 +356,7 @@ if search:
 
                     icon, condition = weather_icons.get(
                         weather_code,
-                        ("❓", "Unknown")
+                        ("❓", "Unknown"),
                     )
 
 
@@ -383,7 +366,7 @@ if search:
 
                     date = datetime.strptime(
                         date_string,
-                        "%Y-%m-%d"
+                        "%Y-%m-%d",
                     )
 
 
@@ -445,9 +428,7 @@ if search:
 
             st.divider()
 
-            st.subheader(
-                "📈 Temperature Trend"
-            )
+            st.subheader("📈 Temperature Trend")
 
 
             # =================================
@@ -469,7 +450,7 @@ if search:
                 "Minimum Temperature": [
                     day["min_temp"]
                     for day in forecast
-                ]
+                ],
             })
 
 
@@ -495,9 +476,7 @@ if search:
             # DISPLAY CHART
             # =================================
 
-            st.line_chart(
-                chart_df
-            )
+            st.line_chart(chart_df)
 
 
         # =================================
@@ -512,7 +491,7 @@ if search:
 
                 error_message = error_data.get(
                     "detail",
-                    "Unable to fetch weather."
+                    "Unable to fetch weather.",
                 )
 
             except Exception:
@@ -520,7 +499,6 @@ if search:
                 error_message = (
                     "Unable to fetch weather."
                 )
-
 
             st.error(
                 f"❌ {error_message}"

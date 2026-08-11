@@ -1,33 +1,124 @@
+
 from fastapi import FastAPI
-import httpx
-from weather_service import get_coordinates, get_weather_data
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from weather_service import (
+    get_coordinates,
+    get_weather_data
+)
 
+
+# =====================================
+# CREATE FASTAPI APP
+# =====================================
+
+app = FastAPI(
+    title="Weather Dashboard API",
+    description="Weather API using Open-Meteo",
+    version="1.0.0"
+)
+
+
+# =====================================
+# CORS
+# =====================================
+
+app.add_middleware(
+    CORSMiddleware,
+
+    allow_origins=["*"],
+
+    allow_credentials=False,
+
+    allow_methods=["*"],
+
+    allow_headers=["*"],
+)
+
+
+# =====================================
+# ROOT ENDPOINT
+# =====================================
 
 @app.get("/")
-async def home():
+async def root():
+
     return {
-        "message": "Welcome to Weather API"
+        "message": "Weather Dashboard API is running!",
+        "status": "online"
     }
 
 
-@app.get("/coordinates/{city}")
-async def coordinates(city: str):
-    return await get_coordinates(city)
+# =====================================
+# HEALTH CHECK
+# =====================================
 
+@app.get("/health")
+async def health():
+
+    return {
+        "status": "healthy"
+    }
+
+
+# =====================================
+# WEATHER ENDPOINT
+# =====================================
 
 @app.get("/weather/{city}")
 async def weather(city: str):
 
-    coordinate_data = await get_coordinates(city)
+    # -----------------------------
+    # GET COORDINATES
+    # -----------------------------
+
+    location = await get_coordinates(city)
+
+    # -----------------------------
+    # GET WEATHER
+    # -----------------------------
 
     weather_data = await get_weather_data(
-        coordinate_data["latitude"],
-        coordinate_data["longitude"]
+        location["latitude"],
+        location["longitude"]
     )
 
+    # -----------------------------
+    # COMBINE RESPONSE
+    # -----------------------------
+
     return {
-        "city": coordinate_data["city"],
-        **weather_data
+
+        "city": location["city"],
+
+        "latitude": location["latitude"],
+
+        "longitude": location["longitude"],
+
+        "temperature":
+            weather_data["temperature"],
+
+        "humidity":
+            weather_data["humidity"],
+
+        "wind_speed":
+            weather_data["wind_speed"],
+
+        "weather_code":
+            weather_data["weather_code"],
+
+        "feels_like":
+            weather_data["feels_like"],
+
+        "sunrise":
+            weather_data["sunrise"],
+
+        "sunset":
+            weather_data["sunset"],
+
+        "rain_probability":
+            weather_data["rain_probability"],
+
+        "forecast":
+            weather_data["forecast"]
     }

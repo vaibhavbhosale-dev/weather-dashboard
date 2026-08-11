@@ -1,8 +1,8 @@
 
-import asyncio
 import httpx
-from fastapi import HTTPException
+import asyncio
 from time import time
+from fastapi import HTTPException
 
 
 # =====================================
@@ -22,7 +22,10 @@ async def get_coordinates(city: str):
 
     url = (
         "https://geocoding-api.open-meteo.com/v1/search"
-        f"?name={city}&count=1&language=en&format=json"
+        f"?name={city}"
+        "&count=1"
+        "&language=en"
+        "&format=json"
     )
 
     async with httpx.AsyncClient() as client:
@@ -50,7 +53,10 @@ async def get_coordinates(city: str):
 
             raise HTTPException(
                 status_code=503,
-                detail="Could not connect to the geocoding service."
+                detail=(
+                    "Could not connect to "
+                    "the geocoding service."
+                )
             )
 
     data = response.json()
@@ -89,6 +95,7 @@ async def get_weather_data(
         round(longitude, 4)
     )
 
+
     # =================================
     # CHECK CACHE
     # =================================
@@ -101,8 +108,10 @@ async def get_weather_data(
 
             return cached_data
 
-        # Cache expired
-        del weather_cache[cache_key]
+        else:
+
+            del weather_cache[cache_key]
+
 
     # =================================
     # OPEN-METEO URL
@@ -129,8 +138,9 @@ async def get_weather_data(
         "timezone=auto"
     )
 
+
     # =================================
-    # REQUEST WEATHER WITH RETRIES
+    # REQUEST WEATHER
     # =================================
 
     max_retries = 3
@@ -148,18 +158,60 @@ async def get_weather_data(
                     timeout=30
                 )
 
-                # -----------------------------
-                # RATE LIMIT
-                # -----------------------------
+
+                # =============================
+                # RATE LIMITED
+                # =============================
 
                 if weather_response.status_code == 429:
 
+                    # If cached data exists, use it
+                    # instead of failing completely.
+
+                    if cache_key in weather_cache:
+
+                        cached_data, timestamp = weather_cache[
+                            cache_key
+                        ]
+
+                        return cached_data
+
+
+                    # Read Retry-After if Open-Meteo
+                    # provides it.
+
+                    retry_after = weather_response.headers.get(
+                        "Retry-After"
+                    )
+
+                    if retry_after:
+
+                        try:
+
+                            wait_time = min(
+                                int(retry_after),
+                                30
+                            )
+
+                        except ValueError:
+
+                            wait_time = 10
+
+                    else:
+
+                        wait_time = 10 * (attempt + 1)
+
+
+                    # Retry if attempts remain
+
                     if attempt < max_retries - 1:
 
-                        # Wait before trying again
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(
+                            wait_time
+                        )
 
                         continue
+
 
                     raise HTTPException(
                         status_code=429,
@@ -170,19 +222,23 @@ async def get_weather_data(
                         )
                     )
 
-                # -----------------------------
+
+                # =============================
                 # OTHER HTTP ERRORS
-                # -----------------------------
+                # =============================
 
                 weather_response.raise_for_status()
 
                 break
 
+
             except httpx.RequestError:
 
                 if attempt < max_retries - 1:
 
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(
+                        2 * (attempt + 1)
+                    )
 
                     continue
 
@@ -194,15 +250,17 @@ async def get_weather_data(
                     )
                 )
 
+
             except httpx.HTTPStatusError as e:
 
                 raise HTTPException(
                     status_code=502,
                     detail=(
-                        f"Weather service returned "
+                        "Weather service returned "
                         f"status {e.response.status_code}."
                     )
                 )
+
 
     # =================================
     # SAFETY CHECK
@@ -211,9 +269,10 @@ async def get_weather_data(
     if weather_response is None:
 
         raise HTTPException(
-            status_code=503,
-            detail="Weather service did not respond."
+            status_code=502,
+            detail="No response from weather service."
         )
+
 
     # =================================
     # PARSE RESPONSE
@@ -227,11 +286,15 @@ async def get_weather_data(
 
         raise HTTPException(
             status_code=502,
-            detail="Weather service returned invalid JSON."
+            detail=(
+                "Weather service returned "
+                "invalid JSON."
+            )
         )
 
+
     # =================================
-    # VALIDATE RESPONSE
+    # VALIDATE CURRENT DATA
     # =================================
 
     if "current" not in weather_data:
@@ -244,6 +307,11 @@ async def get_weather_data(
             )
         )
 
+
+    # =================================
+    # VALIDATE DAILY DATA
+    # =================================
+
     if "daily" not in weather_data:
 
         raise HTTPException(
@@ -254,6 +322,12 @@ async def get_weather_data(
             )
         )
 
+
+    current = weather_data["current"]
+
+    daily = weather_data["daily"]
+
+
     # =================================
     # CREATE RESULT
     # =================================
@@ -261,52 +335,55 @@ async def get_weather_data(
     result = {
 
         "temperature":
-            weather_data["current"]["temperature_2m"],
+            current["temperature_2m"],
 
         "humidity":
-            weather_data["current"]["relative_humidity_2m"],
+            current["relative_humidity_2m"],
 
         "wind_speed":
-            weather_data["current"]["wind_speed_10m"],
+            current["wind_speed_10m"],
 
         "weather_code":
-            weather_data["current"]["weather_code"],
+            current["weather_code"],
 
         "feels_like":
-            weather_data["current"]["apparent_temperature"],
+            current["apparent_temperature"],
 
         "sunrise":
-            weather_data["daily"]["sunrise"],
+            daily["sunrise"],
 
         "sunset":
-            weather_data["daily"]["sunset"],
+            daily["sunset"],
 
         "rain_probability":
-            weather_data["daily"][
-                "precipitation_probability_max"
-            ],
+            daily["precipitation_probability_max"],
 
         "forecast": [
 
             {
                 "date": date,
+
                 "weather_code": code,
+
                 "max_temp": max_temp,
+
                 "min_temp": min_temp
             }
 
             for date, code, max_temp, min_temp in zip(
 
-                weather_data["daily"]["time"],
+                daily["time"],
 
-                weather_data["daily"]["weather_code"],
+                daily["weather_code"],
 
-                weather_data["daily"]["temperature_2m_max"],
+                daily["temperature_2m_max"],
 
-                weather_data["daily"]["temperature_2m_min"]
+                daily["temperature_2m_min"]
+
             )
         ]
     }
+
 
     # =================================
     # SAVE TO CACHE
@@ -316,6 +393,7 @@ async def get_weather_data(
         result,
         time()
     )
+
 
     return result
 
