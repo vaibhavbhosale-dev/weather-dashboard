@@ -1,4 +1,4 @@
-```python
+
 import asyncio
 import httpx
 from fastapi import HTTPException
@@ -318,4 +318,4 @@ async def get_weather_data(
     )
 
     return result
-```
+
