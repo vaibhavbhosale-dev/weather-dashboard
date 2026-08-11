@@ -1,8 +1,16 @@
+
 import streamlit as st
 import httpx
 import pandas as pd
 import base64
 from datetime import datetime
+
+
+# =====================================
+# BACKEND URL
+# =====================================
+
+BACKEND_URL = "https://weather-dashboard-api-w889.onrender.com"
 
 
 # =====================================
@@ -50,6 +58,7 @@ st.set_page_config(
 # =====================================
 
 with open("assets/weather_bg.jpg", "rb") as image_file:
+
     encoded_image = base64.b64encode(
         image_file.read()
     ).decode()
@@ -196,21 +205,22 @@ if search:
 
             try:
 
+                # Connect to deployed FastAPI backend
                 url = (
-                    f"http://127.0.0.1:8000/"
-                    f"weather/{city.strip()}"
+                    f"{BACKEND_URL}/weather/"
+                    f"{city.strip()}"
                 )
 
                 response = httpx.get(
                     url,
-                    timeout=30
+                    timeout=60
                 )
 
             except httpx.RequestError:
 
                 st.error(
-                    "❌ Could not connect to FastAPI. "
-                    "Make sure FastAPI is running."
+                    "❌ Could not connect to the "
+                    "weather server."
                 )
 
                 st.stop()
@@ -340,7 +350,7 @@ if search:
             forecast_columns = st.columns(7)
 
 
-            for i in range(7):
+            for i in range(len(forecast)):
 
                 with forecast_columns[i]:
 
@@ -397,36 +407,36 @@ if search:
                     # -----------------------------
 
                     st.html(
-    f"""
-    <div class="forecast-card">
+                        f"""
+                        <div class="forecast-card">
 
-        <div class="forecast-day">
-            {day_name}
-        </div>
+                            <div class="forecast-day">
+                                {day_name}
+                            </div>
 
-        <div class="forecast-icon">
-            {icon}
-        </div>
+                            <div class="forecast-icon">
+                                {icon}
+                            </div>
 
-        <div class="forecast-temp">
-            {max_temp}°C
-        </div>
+                            <div class="forecast-temp">
+                                {max_temp}°C
+                            </div>
 
-        <div class="forecast-min">
-            {min_temp}°C
-        </div>
+                            <div class="forecast-min">
+                                {min_temp}°C
+                            </div>
 
-        <div class="forecast-condition">
-            {condition}
-        </div>
+                            <div class="forecast-condition">
+                                {condition}
+                            </div>
 
-        <div class="forecast-rain">
-            🌧️ Rain: {rain}%
-        </div>
+                            <div class="forecast-rain">
+                                🌧️ Rain: {rain}%
+                            </div>
 
-    </div>
-    """
-)
+                        </div>
+                        """
+                    )
 
 
             # =================================
@@ -515,3 +525,4 @@ if search:
             st.error(
                 f"❌ {error_message}"
             )
+
