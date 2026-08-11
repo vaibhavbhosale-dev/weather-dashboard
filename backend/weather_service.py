@@ -1,6 +1,20 @@
 import httpx
 from fastapi import HTTPException
+from time import time
 
+
+# =====================================
+# SIMPLE WEATHER CACHE
+# =====================================
+
+weather_cache = {}
+
+CACHE_DURATION = 600  # 10 minutes
+
+
+# =====================================
+# GET CITY COORDINATES
+# =====================================
 
 async def get_coordinates(city: str):
 
@@ -11,31 +25,84 @@ async def get_coordinates(city: str):
 
     async with httpx.AsyncClient() as client:
 
-        response = await client.get(url)
-        response.raise_for_status()
+        try:
+            response = await client.get(
+                url,
+                timeout=30
+            )
+
+            response.raise_for_status()
+
+        except httpx.HTTPStatusError as e:
+
+            raise HTTPException(
+                status_code=502,
+                detail=f"Geocoding service error: {e.response.status_code}"
+            )
+
+        except httpx.RequestError:
+
+            raise HTTPException(
+                status_code=503,
+                detail="Could not connect to the geocoding service."
+            )
 
         data = response.json()
 
-        if "results" not in data or not data["results"]:
+    if "results" not in data or not data["results"]:
 
-            raise HTTPException(
-                status_code=404,
-                detail="City not found"
-            )
+        raise HTTPException(
+            status_code=404,
+            detail="City not found"
+        )
 
-        location = data["results"][0]
+    location = data["results"][0]
 
-        return {
-            "city": location["name"],
-            "latitude": location["latitude"],
-            "longitude": location["longitude"]
-        }
+    return {
+        "city": location["name"],
+        "latitude": location["latitude"],
+        "longitude": location["longitude"]
+    }
 
+
+# =====================================
+# GET WEATHER DATA
+# =====================================
 
 async def get_weather_data(
     latitude: float,
     longitude: float
 ):
+
+    # =================================
+    # CACHE KEY
+    # =================================
+
+    cache_key = (
+        round(latitude, 4),
+        round(longitude, 4)
+    )
+
+    # =================================
+    # CHECK CACHE
+    # =================================
+
+    if cache_key in weather_cache:
+
+        cached_data, timestamp = weather_cache[cache_key]
+
+        if time() - timestamp < CACHE_DURATION:
+
+            return cached_data
+
+        else:
+
+            del weather_cache[cache_key]
+
+
+    # =================================
+    # OPEN-METEO URL
+    # =================================
 
     weather_url = (
         f"https://api.open-meteo.com/v1/forecast?"
@@ -58,26 +125,93 @@ async def get_weather_data(
         f"timezone=auto"
     )
 
+
+    # =================================
+    # REQUEST WEATHER
+    # =================================
+
     async with httpx.AsyncClient() as client:
 
-        weather_response = await client.get(
-            weather_url,
-            timeout=30
+        try:
+
+            weather_response = await client.get(
+                weather_url,
+                timeout=30
+            )
+
+        except httpx.RequestError:
+
+            raise HTTPException(
+                status_code=503,
+                detail="Could not connect to the weather service."
+            )
+
+
+    # =================================
+    # RATE LIMIT
+    # =================================
+
+    if weather_response.status_code == 429:
+
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Weather service is temporarily rate-limited. "
+                "Please try again later."
+            )
         )
+
+
+    # =================================
+    # OTHER HTTP ERRORS
+    # =================================
+
+    try:
 
         weather_response.raise_for_status()
 
+    except httpx.HTTPStatusError as e:
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Weather service returned "
+                f"status {e.response.status_code}."
+            )
+        )
+
+
+    # =================================
+    # PARSE RESPONSE
+    # =================================
+
     weather_data = weather_response.json()
 
-    # Check whether Open-Meteo returned an API error
+
+    # =================================
+    # VALIDATE RESPONSE
+    # =================================
+
     if "current" not in weather_data:
 
         raise HTTPException(
             status_code=502,
-            detail=f"Weather API response missing current data: {weather_data}"
+            detail="Weather service returned an invalid response."
         )
 
-    return {
+    if "daily" not in weather_data:
+
+        raise HTTPException(
+            status_code=502,
+            detail="Weather service returned incomplete forecast data."
+        )
+
+
+    # =================================
+    # CREATE RESPONSE
+    # =================================
+
+    result = {
 
         "temperature":
             weather_data["current"]["temperature_2m"],
@@ -123,6 +257,18 @@ async def get_weather_data(
                 weather_data["daily"]["temperature_2m_min"]
 
             )
-
         ]
     }
+
+
+    # =================================
+    # SAVE TO CACHE
+    # =================================
+
+    weather_cache[cache_key] = (
+        result,
+        time()
+    )
+
+
+    return result
