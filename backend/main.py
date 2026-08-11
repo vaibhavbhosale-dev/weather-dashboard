@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from weather_service import (
@@ -25,39 +25,22 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-
     allow_origins=["*"],
-
-    allow_credentials=False,
-
+    allow_credentials=True,
     allow_methods=["*"],
-
     allow_headers=["*"],
 )
 
 
 # =====================================
-# ROOT ENDPOINT
+# ROOT
 # =====================================
 
 @app.get("/")
 async def root():
 
     return {
-        "message": "Weather Dashboard API is running!",
-        "status": "online"
-    }
-
-
-# =====================================
-# HEALTH CHECK
-# =====================================
-
-@app.get("/health")
-async def health():
-
-    return {
-        "status": "healthy"
+        "message": "Weather Dashboard API is running!"
     }
 
 
@@ -66,26 +49,39 @@ async def health():
 # =====================================
 
 @app.get("/weather/{city}")
-async def weather(city: str):
+async def get_weather(city: str):
 
-    # -----------------------------
+    # =================================
+    # VALIDATE CITY
+    # =================================
+
+    city = city.strip()
+
+    if not city:
+
+        raise HTTPException(
+            status_code=400,
+            detail="City name cannot be empty."
+        )
+
+    # =================================
     # GET COORDINATES
-    # -----------------------------
+    # =================================
 
     location = await get_coordinates(city)
 
-    # -----------------------------
+    # =================================
     # GET WEATHER
-    # -----------------------------
+    # =================================
 
-    weather_data = await get_weather_data(
+    weather = await get_weather_data(
         location["latitude"],
         location["longitude"]
     )
 
-    # -----------------------------
+    # =================================
     # COMBINE RESPONSE
-    # -----------------------------
+    # =================================
 
     return {
 
@@ -95,30 +91,24 @@ async def weather(city: str):
 
         "longitude": location["longitude"],
 
-        "temperature":
-            weather_data["temperature"],
+        "temperature": weather["temperature"],
 
-        "humidity":
-            weather_data["humidity"],
+        "humidity": weather["humidity"],
 
-        "wind_speed":
-            weather_data["wind_speed"],
+        "wind_speed": weather["wind_speed"],
 
-        "weather_code":
-            weather_data["weather_code"],
+        "weather_code": weather["weather_code"],
 
-        "feels_like":
-            weather_data["feels_like"],
+        "feels_like": weather["feels_like"],
 
-        "sunrise":
-            weather_data["sunrise"],
+        "sunrise": weather["sunrise"],
 
-        "sunset":
-            weather_data["sunset"],
+        "sunset": weather["sunset"],
 
         "rain_probability":
-            weather_data["rain_probability"],
+            weather["rain_probability"],
 
         "forecast":
-            weather_data["forecast"]
+            weather["forecast"]
     }
+
