@@ -12,6 +12,7 @@ async def get_coordinates(city: str):
     async with httpx.AsyncClient() as client:
 
         response = await client.get(url)
+        response.raise_for_status()
 
         data = response.json()
 
@@ -37,33 +38,44 @@ async def get_weather_data(
 ):
 
     weather_url = (
-    f"https://api.open-meteo.com/v1/forecast?"
-    f"latitude={latitude}&"
-    f"longitude={longitude}&"
-    f"current="
-    f"temperature_2m,"
-    f"relative_humidity_2m,"
-    f"wind_speed_10m,"
-    f"weather_code,"
-    f"apparent_temperature&"
-    f"daily="
-    f"weather_code,"
-    f"temperature_2m_max,"
-    f"temperature_2m_min,"
-    f"precipitation_probability_max,"
-    f"sunrise,"
-    f"sunset&"
-    f"forecast_days=7&"
-    f"timezone=auto"
-)
+        f"https://api.open-meteo.com/v1/forecast?"
+        f"latitude={latitude}&"
+        f"longitude={longitude}&"
+        f"current="
+        f"temperature_2m,"
+        f"relative_humidity_2m,"
+        f"wind_speed_10m,"
+        f"weather_code,"
+        f"apparent_temperature&"
+        f"daily="
+        f"weather_code,"
+        f"temperature_2m_max,"
+        f"temperature_2m_min,"
+        f"precipitation_probability_max,"
+        f"sunrise,"
+        f"sunset&"
+        f"forecast_days=7&"
+        f"timezone=auto"
+    )
 
     async with httpx.AsyncClient() as client:
 
         weather_response = await client.get(
-            weather_url
+            weather_url,
+            timeout=30
         )
 
+        weather_response.raise_for_status()
+
     weather_data = weather_response.json()
+
+    # Check whether Open-Meteo returned an API error
+    if "current" not in weather_data:
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Weather API response missing current data: {weather_data}"
+        )
 
     return {
 
