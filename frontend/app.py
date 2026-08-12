@@ -1,9 +1,9 @@
-
 import streamlit as st
 import httpx
 import pandas as pd
 import base64
 from datetime import datetime
+from pathlib import Path
 
 
 # =====================================
@@ -11,6 +11,7 @@ from datetime import datetime
 # =====================================
 
 BACKEND_URL = "https://weather-dashboard-production-7db3.up.railway.app"
+
 
 # =====================================
 # WEATHER ICONS
@@ -56,11 +57,15 @@ st.set_page_config(
 # LOAD BACKGROUND IMAGE
 # =====================================
 
+BASE_DIR = Path(__file__).resolve().parent
+BACKGROUND_IMAGE = BASE_DIR / "assets" / "weather_bg.jpg"
+
 try:
-    with open("assets/weather_bg.jpg", "rb") as image_file:
+    with open(BACKGROUND_IMAGE, "rb") as image_file:
         encoded_image = base64.b64encode(
             image_file.read()
         ).decode()
+
 except FileNotFoundError:
     encoded_image = ""
 
@@ -70,6 +75,7 @@ except FileNotFoundError:
 # =====================================
 
 if encoded_image:
+
     st.markdown(
         f"""
         <style>
@@ -179,6 +185,7 @@ city = st.text_input(
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
+
     search = st.button(
         "🔍 Get Weather",
         use_container_width=True,
@@ -220,6 +227,7 @@ if search:
 
                 st.stop()
 
+
         # =================================
         # API RESPONSE
         # =================================
@@ -227,6 +235,7 @@ if search:
         if response.status_code == 200:
 
             data = response.json()
+
 
             # =================================
             # CURRENT WEATHER
@@ -343,9 +352,18 @@ if search:
                 with forecast_columns[i]:
 
                     date_string = day["date"]
-                    weather_code = day["weather_code"]
-                    max_temp = day["max_temp"]
-                    min_temp = day["min_temp"]
+
+                    weather_code = day[
+                        "weather_code"
+                    ]
+
+                    max_temp = day[
+                        "max_temp"
+                    ]
+
+                    min_temp = day[
+                        "min_temp"
+                    ]
 
                     rain = rain_probability[i]
 
@@ -503,4 +521,3 @@ if search:
             st.error(
                 f"❌ {error_message}"
             )
-
