@@ -10,7 +10,7 @@ from datetime import datetime
 # BACKEND URL
 # =====================================
 
-BACKEND_URL = "https://weather-dashboard-api-w889.onrender.com"
+BACKEND_URL = "https://weather-dashboard-production-7db3.up.railway.app"
 
 # =====================================
 # WEATHER ICONS

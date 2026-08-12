@@ -1,8 +1,9 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from backend.weather_service import get_coordinates, get_weather_data
 
-from weather_service import (
+from backend.weather_service import (
     get_coordinates,
     get_weather_data
 )
