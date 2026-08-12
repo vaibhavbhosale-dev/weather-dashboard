@@ -1,8 +1,16 @@
 # 🌤️ Weather Dashboard
 
-A simple weather dashboard built using **Python, FastAPI, and Streamlit**.
+# 🌤️ Weather Dashboard
 
-This project allows users to enter a city and view its current weather information along with a 7-day forecast.
+A full-stack weather dashboard built using Streamlit and FastAPI.
+
+## 🚀 Live Demo
+
+👉 [Open Weather Dashboard](https://weather-dashboard-k9girn8hkbvnkp4n2qtkp9.streamlit.app/)
+
+## 🔗 Backend API
+
+👉 [View FastAPI API Documentation](https://weather-dashboard-production-7db3.up.railway.app/docs)
 
 ## ✨ Features
 
